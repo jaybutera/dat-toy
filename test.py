@@ -5,7 +5,7 @@ from sklearn import preprocessing as pp
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from keras.layers import LSTM, Dense
+from keras.layers import LSTM, Dense, Conv1D, Dropout
 from keras.models import Model, Sequential
 
 import csv
@@ -46,6 +46,10 @@ def load_data (winsize, test_ratio):
     speeds = mms.fit_transform( [float(x['Vehicle_Speed']) for x in data[:-2*winsize]] )
     brakes = mms.fit_transform( floatify([x['Brake_Control_Volume'] for x in data[:-2*winsize]]) )
     engs   = mms.fit_transform( floatify([x['Engine_Speed'] for x in data[:-2*winsize]]) )
+    plt.plot(speeds, 'r')
+    plt.plot(brakes, 'g')
+    plt.plot(engs, 'b')
+    plt.show()
 
     fuels  = mms.fit_transform( floatify([x['Fuel_Consum'] for x in
         data[winsize:-winsize]]) )
@@ -60,8 +64,9 @@ def load_data (winsize, test_ratio):
     #fuels_w = fuels_w.reshape( len(fuels_w), winsize, 1)
 
     #X_train = np.array([speeds_w, brakes_w, engs_w, fuels_w])
-    X = np.array([engs_w, speeds_w, brakes_w])
-    X = X.reshape(speeds_w.shape[0], winsize, 3)
+    X = np.array([speeds_w, engs_w, brakes_w])
+    #X = X.reshape(speeds_w.shape[0], winsize, 3)
+    X = np.transpose(X, axes=(1,2,0))
 
     X_train = X[:cut]
     #X_train = np.array(engs_w[:cut])
@@ -85,6 +90,9 @@ def plot_res (preds, Y, winsize):
     plt.plot(Y, 'b')
     plt.show()
 
+def ma (l):
+    return np.concatenate(np.array([ (l[i]+l[i+1])/2 for i in range(len(l-1))]), l[-1])
+
 
 winsize = 30
 test_ratio = .75
@@ -92,18 +100,21 @@ test_ratio = .75
 X_train, Y_train, X_test, Y_test, fuels = load_data(winsize, test_ratio)
 
 model = Sequential()
-model.add( Dense(64, input_shape=(None,3), batch_input_shape=(32,winsize,3)) )
+model.add( Conv1D(64,4, input_shape=(None, 3)))#, batch_input_shape=(32,winsize,3)) )
+model.add( Conv1D(32,4) )
+model.add( Dropout(24) )
+#model.add( Dense(64, input_shape=(None,3), batch_input_shape=(32,winsize,3)) )
 #model.add( LSTM(32, input_shape=(None,3)) )
-model.add( LSTM(32, stateful=True) )
-model.add( Dense(40, activation='relu') )
+model.add( LSTM(32, stateful=False) )
+#model.add( Dense(40, activation='relu') )
 model.add( Dense(winsize, activation='relu') )
 
 model.compile(optimizer='rmsprop',
               loss='mse')
 print(model.summary())
 
-model.fit(X_train[:8192], Y_train[:8102], epochs=2)
+model.fit(X_train, Y_train, epochs=3, shuffle=True)
 
-preds = model.predict(X_test[:4096])
+preds = model.predict(X_test)
 
 plot_res(preds, fuels, winsize)
