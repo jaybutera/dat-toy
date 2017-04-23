@@ -1,6 +1,7 @@
 from keras.models import Model
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import signal
 
 from sklearn import preprocessing as pp
 
@@ -9,9 +10,24 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import csv
 
+def butter_highpass(cutoff, fs, order=5):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = signal.butter(order, normal_cutoff, btype='high', analog=True)
+    return b, a
+
+def butter_highpass_filter(data, cutoff, fs, order=5):
+    b, a = butter_highpass(cutoff, fs, order=order)
+    y = signal.filtfilt(b, a, data)
+    return y
+
 def ma (l):
-        return np.concatenate(np.array([ (l[i]+l[i+1])/2 for i in
-            range(len(l-1))]), l[-1])
+    return np.concatenate(
+            (np.array( [np.average(l[i:i+2]) for i in range(len(l-1))] ),
+            np.array([l[-1]])),
+            axis=0)
+        #return np.concatenate(np.array([ (l[i]+l[i+1])/2 for i in
+            #range(len(l-1))]), l[-1])
 
 def load_file(filename):
     with open(filename) as f:
@@ -31,24 +47,33 @@ def floatify (l):
         try:
             d.append( float(x) )
         except ValueError:
-            print('invalid string to float: ', x)
+            #print('invalid string to float: ', x)
             d.append(0.)
 
     return d
 
-def load_data (winsize, test_ratio):
-    data = load_file('20170303_sec.csv')
+def load_data (winsize, test_ratio, filename):
+    data = load_file(filename)
 
     mms = pp.MinMaxScaler()
 
     cut = int(len(data) * test_ratio)
 
-    speeds = mms.fit_transform( [float(x['Vehicle_Speed']) for x in data[:-2*winsize]] )
+    speeds = mms.fit_transform( floatify([x['Vehicle_Speed'] for x in data[:-2*winsize]]) )
     brakes = mms.fit_transform( floatify([x['Brake_Control_Volume'] for x in data[:-2*winsize]]) )
     engs   = mms.fit_transform( floatify([x['Engine_Speed'] for x in data[:-2*winsize]]) )
+    rcs    = mms.fit_transform( floatify([x['Radar_Cruise_State'] for x in data[:-2*winsize]]) )
+    ac     = mms.fit_transform( floatify([x['AC_Blower_Level'] for x in data[:-2*winsize]]) )
+    fuel_h = mms.fit_transform( floatify([x['Fuel_Consum'] for x in data[:-2*winsize]]) )
+    temp   = mms.fit_transform( floatify([x['GD_Engine_Temp'] for x in data[:-2*winsize]]) )
 
     fuels  = mms.fit_transform( floatify([x['Fuel_Consum'] for x in
         data[winsize:-winsize]]) )
+    '''
+    fuels = butter_highpass_filter(fuels, 30, 1)
+    plt.plot(fuels)
+    plt.show()
+    '''
 
     #speeds_w = windowfy(speeds, winsize)
     #speeds_w = speeds_w.reshape( len(speeds_w), winsize, 1)
@@ -63,7 +88,7 @@ def load_data (winsize, test_ratio):
     #X = np.array([speeds_w, engs_w, brakes_w])
     #X = X.reshape(speeds_w.shape[0], winsize, 3)
     #X = np.transpose(X, axes=(1,2,0))
-    X = np.transpose( np.array([speeds, engs, brakes]) )
+    X = np.transpose( np.array([speeds, engs, brakes, rcs, ac, fuel_h, temp]) )
     X = X.reshape(X.shape[0], 1, X.shape[1])
 
     X_train = X[:cut]
