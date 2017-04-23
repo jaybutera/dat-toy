@@ -46,27 +46,25 @@ def load_data (winsize, test_ratio):
     speeds = mms.fit_transform( [float(x['Vehicle_Speed']) for x in data[:-2*winsize]] )
     brakes = mms.fit_transform( floatify([x['Brake_Control_Volume'] for x in data[:-2*winsize]]) )
     engs   = mms.fit_transform( floatify([x['Engine_Speed'] for x in data[:-2*winsize]]) )
-    plt.plot(speeds, 'r')
-    plt.plot(brakes, 'g')
-    plt.plot(engs, 'b')
-    plt.show()
 
     fuels  = mms.fit_transform( floatify([x['Fuel_Consum'] for x in
         data[winsize:-winsize]]) )
 
-    speeds_w = windowfy(speeds, winsize)
+    #speeds_w = windowfy(speeds, winsize)
     #speeds_w = speeds_w.reshape( len(speeds_w), winsize, 1)
-    brakes_w = windowfy(brakes, winsize)
-    engs_w   = windowfy(engs, winsize)
+    #brakes_w = windowfy(brakes, winsize)
+    #engs_w   = windowfy(engs, winsize)
     #engs_w = engs_w.reshape( len(engs_w), winsize, 1)
 
     fuels_w  = windowfy(fuels, winsize)
-    #fuels_w = fuels_w.reshape( len(fuels_w), winsize, 1)
+    fuels_w = fuels_w.reshape( len(fuels_w),1, winsize)
 
     #X_train = np.array([speeds_w, brakes_w, engs_w, fuels_w])
-    X = np.array([speeds_w, engs_w, brakes_w])
+    #X = np.array([speeds_w, engs_w, brakes_w])
     #X = X.reshape(speeds_w.shape[0], winsize, 3)
-    X = np.transpose(X, axes=(1,2,0))
+    #X = np.transpose(X, axes=(1,2,0))
+    X = np.transpose( np.array([speeds, engs, brakes]) )
+    X = X.reshape(X.shape[0], 1, X.shape[1])
 
     X_train = X[:cut]
     #X_train = np.array(engs_w[:cut])
@@ -78,15 +76,20 @@ def load_data (winsize, test_ratio):
     return X_train, Y_train, X_test, Y_test, fuels[-cut:]
 
 def plot_res (preds, Y, winsize):
-    #t = np.linspace(0, len(preds)-winsize, int(len(Y) / winsize), dtype=int)
-    num = int(len(Y) / winsize)
+    t = np.linspace(0, len(preds)-winsize, int(len(Y) ), dtype=int)
+    num = int(len(preds) / winsize)
 
     #plt.plot([preds[i] for i in t], t, 'r')
     tmp = []
     for i in range(num):
-        tmp += preds[i].tolist()
+        tmp += preds[i*winsize][0].tolist()
+    print('tmp len: ', len(tmp))
 
-    plt.plot(tmp, 'r')
+    for i in range(len(tmp)):
+        if tmp[i] == 0. and i > 0:
+            tmp[i] = tmp[i-1]
+
+    plt.plot(tmp, 'r', marker='o')
     plt.plot(Y, 'b')
     plt.show()
 
@@ -98,22 +101,25 @@ winsize = 30
 test_ratio = .75
 
 X_train, Y_train, X_test, Y_test, fuels = load_data(winsize, test_ratio)
+print('X_test shape: ', X_test.shape)
 
 model = Sequential()
-model.add( Conv1D(64,4, input_shape=(None, 3)))#, batch_input_shape=(32,winsize,3)) )
-model.add( Conv1D(32,4) )
-model.add( Dropout(24) )
-#model.add( Dense(64, input_shape=(None,3), batch_input_shape=(32,winsize,3)) )
+#model.add( Conv1D(64,4, input_shape=(None, 3)))#, batch_input_shape=(32,winsize,3)) )
+#model.add( Conv1D(32,4) )
+#model.add( Dropout(24) )
+model.add( Dense(64, input_shape=(None, 3)) )#, batch_input_shape=(32,winsize,1)) )
 #model.add( LSTM(32, input_shape=(None,3)) )
-model.add( LSTM(32, stateful=False) )
-#model.add( Dense(40, activation='relu') )
+#model.add( LSTM(32, stateful=False) )
+model.add( Dense(32, activation='relu') )
+model.add( Dense(64, activation='relu') )
 model.add( Dense(winsize, activation='relu') )
 
-model.compile(optimizer='rmsprop',
-              loss='mse')
+model.compile(optimizer='sgd',
+              loss='mse',
+              metrics=['acc'])
 print(model.summary())
 
-model.fit(X_train, Y_train, epochs=3, shuffle=True)
+model.fit(X_train, Y_train, epochs=400, shuffle=True)
 
 preds = model.predict(X_test)
 
