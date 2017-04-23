@@ -14,16 +14,16 @@ test_ratio = .9
 
 
 model = Sequential()
-#model.add( Conv1D(64,4, input_shape=(None, 7)))#, batch_input_shape=(32,winsize,3)) )
+#model.add( Conv1D(64,4, input_shape=(None, 8)))#, batch_input_shape=(32,winsize,3)) )
 #model.add( Conv1D(32,4) )
 #model.add( Dropout(24) )
-model.add( Dense(64, input_shape=(None, 7)) )#, batch_input_shape=(32,1,7)) )
+#model.add( Dense(64, input_shape=(None, 8)) )#, batch_input_shape=(32,1,7)) )
 #model.add( LSTM(32, input_shape=(None,3)) )
-#model.add( LSTM(32, stateful=False) )
-model.add( Dense(24, activation='relu') )
+model.add( LSTM(64, input_shape=(None, 8), stateful=False) )
 model.add( Dense(64, activation='relu') )
+model.add( Dense(32, activation='relu') )
 model.add( Dense(48, activation='relu') )
-model.add( Dense(winsize, activation='sigmoid') )
+model.add( Dense(winsize, activation='relu') )
 
 model.compile(optimizer='sgd',
               loss='mse',
@@ -31,7 +31,7 @@ model.compile(optimizer='sgd',
 print(model.summary())
 
 files = ['20170303_sec.csv', '20170307_sec_trip2.csv',
-        '20170308_sec_trip3.csv']
+        '20170308_sec_trip3.csv', '20170309_sec.csv']#, '20170407_sec.csv']
 
 #X_tr = np.array([], dtype=np.float32)
 #Y_tr = np.array([])
@@ -51,7 +51,7 @@ for f in files:
     #np.concatenate(Y_te, Y_test)
 
 print(X_tr.shape)
-model.fit(X_tr, Y_tr, epochs=10, shuffle=True)
+model.fit(X_tr, Y_tr, epochs=100, shuffle=True)
 
 #save_model(model)
 model.save('model.hdf5')

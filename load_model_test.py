@@ -29,7 +29,7 @@ winsize = 30
 test_ratio = .9
 filename = '20170303_sec.csv'
 #X_train, Y_train, X_test, Y_test, fuels = common.load_data(winsize, test_ratio, filename)
-#eval(['20170303_sec.csv', '20170307_sec_trip2.csv', '20170308_sec_trip3.csv'])
+eval(['20170303_sec.csv', '20170307_sec_trip2.csv', '20170308_sec_trip3.csv'])
 
 
 X_train, Y_train, X_test, Y_test, fuels = common.load_data(winsize, test_ratio, filename)
