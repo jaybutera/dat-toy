@@ -98,7 +98,7 @@ def ma (l):
 
 
 winsize = 30
-test_ratio = .75
+test_ratio = .9
 
 X_train, Y_train, X_test, Y_test, fuels = load_data(winsize, test_ratio)
 print('X_test shape: ', X_test.shape)
