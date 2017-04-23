@@ -9,6 +9,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import csv
 
+def ma (l):
+        return np.concatenate(np.array([ (l[i]+l[i+1])/2 for i in
+            range(len(l-1))]), l[-1])
+
 def load_file(filename):
     with open(filename) as f:
         r = csv.DictReader(f)
